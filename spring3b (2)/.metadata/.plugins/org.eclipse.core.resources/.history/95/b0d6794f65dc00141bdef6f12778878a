@@ -1,0 +1,164 @@
+package model;
+
+import java.sql.*;
+
+public class MemberDAO extends BaseDAO {
+	Connection conn = null; 
+	PreparedStatement pstmt = null;
+	Statement stmt = null;
+	ResultSet rs = null;
+	String sql = null;
+	public String uploadImage(MemberDTO dto) {
+		String rtnDto = null;
+		System.out.println(dto.getId() + ":" + dto.getImage());
+		try {	
+			conn = getConnection();
+			sql = "update member set image = ? " + 
+				  "where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getImage());
+			pstmt.setString(2, dto.getId());
+			pstmt.executeUpdate();
+			rtnDto = "이미지 업로드"; 
+		}catch(SQLException e) {
+			// conn.rollback();
+			e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}		
+	}
+	public MemberDTO login(MemberDTO dto) {
+		// DBMS 연결 
+		MemberDTO rtnDto = null;
+		try {	
+			conn = getConnection();
+			
+			sql = "select * from member where id = ? and pw = ?";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			pstmt.setString(2, dto.getPw());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {
+				rtnDto = new MemberDTO();
+				rtnDto.setId(rs.getString("id"));
+				rtnDto.setName(rs.getString("name")); // 필드이름
+			} 
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}
+			
+	}
+	public MemberDTO read(MemberDTO dto) {
+		// DBMS 연결 
+		MemberDTO rtnDto = null;
+		try {	
+			conn = getConnection();
+			
+			sql = "select * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {
+				rtnDto = new MemberDTO();
+				rtnDto.setId(rs.getString("id"));
+				rtnDto.setName(rs.getString("name")); // 필드이름
+				rtnDto.setGender(rs.getString("gender"));
+				rtnDto.setBirth(rs.getString("birth"));
+			} 
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}
+			
+	}
+	public String join(MemberDTO dto) {
+		// DBMS 연결 
+		String rst = "success";
+		try {	
+			conn = getConnection(); 
+			
+			sql = "select * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {		
+				rst = "중복아이디 : 이미 등록된 아이디입니다!";			
+			} else {		
+				// 트랜잭션 내의 여러 테이블 수정을 위해 AutoCommit을 중지
+				//conn.setAutoCommit(false);		
+				// 회원으로 등록 
+				sql = "insert into member (id, name, pw, gender, birth) " + 
+					  " values (?, ?, ?, ?, ?)";
+				pstmt = conn.prepareStatement(sql);
+				pstmt.setString(1, dto.getId());
+				pstmt.setString(2, dto.getName());
+				pstmt.setString(3, dto.getPw());
+				pstmt.setString(4, dto.getGender());
+				pstmt.setString(5, dto.getBirth());
+				pstmt.executeUpdate();
+				//conn.commit();
+			}
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();
+				rst = e.getMessage();
+		} finally {
+			return rst;
+		}
+	}
+	
+	public int update(MemberDTO dto) {
+		String query = "update member set name=?, "
+				+ "phone=?, email=?, zipcode=?, address=? where id=? and pw=?";
+		int row = 0;
+		conn = getConnection(); 
+		try {
+			pstmt = conn.prepareStatement(query);
+			pstmt.setString(1, dto.getName());
+			pstmt.setString(2, dto.getPhone());
+			pstmt.setString(3, dto.getEmail());
+			pstmt.setString(4, dto.getZipcode());
+			pstmt.setString(5, dto.getAddress());
+			System.out.println(dto.getId() + " : " + dto.getPw());
+			pstmt.setString(6, dto.getId());
+			pstmt.setString(7, dto.getPw());
+			row = pstmt.executeUpdate();						
+		} catch(SQLException e) {
+			System.err.println(e.getMessage());			
+		} finally {
+			// dbutil.closeRsStmt();
+		}
+		return row;	
+	}
+	
+	public int delete(MemberDTO dto) {
+		// DBMS 연결 
+		int row=0;
+		try {	
+			conn = getConnection();
+			
+			sql = "delete * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			row = pstmt.executeUpdate();
+			return row;
+			
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return row;
+		}
+			
+	}
+	
+	
+}

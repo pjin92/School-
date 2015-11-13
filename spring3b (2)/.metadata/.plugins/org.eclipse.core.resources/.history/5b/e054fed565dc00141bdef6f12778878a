@@ -1,0 +1,173 @@
+package controller;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Collection;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.MultipartConfig;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import javax.servlet.http.Part;
+
+import model.MemberDAO;
+import model.MemberDTO;
+/**
+ * Servlet implementation class MemberController
+ */
+@WebServlet({ "/MemberController", "/member_join", "/member_read", "/member_login", "/upload_image", "/member_delete", "/member_update" })
+@MultipartConfig(fileSizeThreshold=1024*1024, maxFileSize=1024*1024*5, maxRequestSize=1024*1024*5*5)
+
+public class MemberController extends HttpServlet {
+	private static final long serialVersionUID = 1L;
+       
+    /**
+     * @see HttpServlet#HttpServlet()
+     */
+    public MemberController() {
+        super();
+        // TODO Auto-generated constructor stub
+    }
+    private String getFileName(Part part) {
+    	String contentDispositionHeader = part.getHeader("content-disposition");
+    	String[] splitedContentDisposition = contentDispositionHeader.split(";");
+    	for (String cd : splitedContentDisposition ) {
+        	if (cd.trim().startsWith("filename")) {
+        		return cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
+            }
+        }
+        return null;
+    }
+    public void process(HttpServletRequest request, 
+    		HttpServletResponse response) 
+    				throws ServletException, IOException {
+    	request.setCharacterEncoding("utf-8");
+    	MemberDTO dto = new MemberDTO();
+    	MemberDAO dao = new MemberDAO();
+    	
+    	String uri = request.getRequestURI();
+    	int lastIndex = uri.lastIndexOf("/");
+    	String action = uri.substring(lastIndex + 1);
+    	
+    	String dispatchURL = null;
+    	HttpSession session = request.getSession();
+    	
+    	if(action.equals("member_join")) {
+    		dto.setId(request.getParameter("ID"));
+    		dto.setName(request.getParameter("name"));
+    		dto.setPw(request.getParameter("pswd"));
+    		dto.setGender(request.getParameter("gender"));
+    		dto.setBirth(request.getParameter("birthday"));
+    		// dto 객체에 값을 설정
+    		String rst = dao.join(dto);
+    		
+    		if(rst.equals("success")) {
+    			session.setAttribute("ID", dto.getId());
+    			//response.sendRedirect("member/resultView.jsp?rst=" + rst);
+    			response.sendRedirect("member/detail_view.jsp");
+    		}
+    		// DB 에러 시, 에러출력화면으로 이동 
+    		else
+    			response.sendRedirect("error/showError.jsp?rst=" + rst);
+    	}
+    	else if(action.equals("member_update")) {
+			dto.setId((String) session.getAttribute("id"));
+			dto.setPw(request.getParameter("pswd"));
+			dto.setName(request.getParameter("name"));
+			dto.setGender(request.getParameter("gender"));
+			dto.setBirth(request.getParameter("birthday"));
+			if(dao.update(dto) >= 1)
+				request.setAttribute("work", "회원 정보 수정 작업을 성공하였습니다.");
+			else
+				request.setAttribute("work", "회원 정보 수정 작업을 실패하였습니다.");
+			url = "index.jsp?content=success.jsp";
+		}
+    	
+    	
+    	
+    	// 로그인 과정이 선행된다.
+    	else if(action.equals("member_read")) {
+    		dto.setId((String)session.getAttribute("ID"));   
+    		// dto.setName((String)session.getAttribute("name")); 
+    		
+    		dto = dao.read(dto);
+    		
+    		if(dto != null) {
+    			session.setAttribute("dto", dto);
+    			response.sendRedirect("member/detail_view.jsp");
+    		}
+    		// DB 에러 시, 에러출력화면으로 이동 
+    		else
+    			response.sendRedirect("error/showError.jsp?rst=" + "회원정보가 존재하지 않습니다.");
+    	}
+    	
+    	else if(action.equals("member_delete")) {
+    		dto.setId((String)session.getAttribute("ID"));   
+    		// dto.setName((String)session.getAttribute("name")); 
+
+    		if(dao.delete(dto) >=1) {
+    			
+    			response.sendRedirect("index.jsp");
+    		}
+    		// DB 에러 시, 에러출력화면으로 이동 
+    		else
+    			response.sendRedirect("error/showError.jsp?rst=" + "탈퇴에 실패하였습니다.");
+    	}
+    	
+    	
+    	else if(action.equals("member_login")) {
+    		dto.setId(request.getParameter("ID"));   
+    		dto.setPw(request.getParameter("pswd"));     		
+    		dto = dao.login(dto);
+    		
+    		if(dto != null) {
+    			session.setAttribute("dto", dto);
+    			session.setAttribute("ID", dto.getId());
+    			response.sendRedirect("member/login_view.jsp");
+    		}
+    		// DB 에러 시, 에러출력화면으로 이동 
+    		else
+    			response.sendRedirect("error/showError.jsp?rst=" + "로그인에 실패하였습니다.");
+    	}
+    	else if(action.equals("upload_image")) {
+    		String partName, partValue="";
+    		request.setCharacterEncoding("utf-8");
+    		Collection<Part> parts = request.getParts();
+    		// Part part = request.getPart("my_image");
+    		for(Part part : parts) {
+    			partName = part.getName();
+    			if(part.getContentType() != null) {		
+    				partValue = getFileName(part); // 이게 중요, 파일 명이 필요해서 
+    				if (partValue != null && ! partValue.isEmpty()) {
+    					String absolutePath = 
+    							getServletContext().getRealPath("/contents/member_uploaded");
+    					part.write(absolutePath + File.separator + partValue);		
+    				}		
+    			}
+    			else {
+    				partValue = request.getParameter(partName);
+    			}
+    			session.setAttribute(partName, partValue);
+    		}
+    		dto.setId((String) session.getAttribute("ID"));  
+    		dto.setImage(partValue);  
+    		String rst = dao.uploadImage(dto);
+    		if(rst != null) 
+    			response.sendRedirect("member/detail_view.jsp");
+    		else 
+    			response.sendRedirect("../error/showError.jsp?rst=" + rst);
+    	}
+
+    }
+	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		process(request, response);
+	}
+
+	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		process(request, response);
+	}
+
+}

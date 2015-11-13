@@ -1,0 +1,194 @@
+package model;
+
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class MemberDAO extends BaseDAO {
+	Connection conn = null; 
+	PreparedStatement pstmt = null;
+	Statement stmt = null;
+	ResultSet rs = null;
+	String sql = null;
+	public String uploadImage(MemberDTO dto) {
+		String rtnDto = null;
+		System.out.println(dto.getId() + ":" + dto.getImage());
+		try {	
+			conn = getConnection();
+			sql = "update member set image = ? " + 
+				  "where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getImage());
+			pstmt.setString(2, dto.getId());
+			pstmt.executeUpdate();
+			rtnDto = "이미지 업로드"; 
+		}catch(SQLException e) {
+			// conn.rollback();
+			e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}		
+	}
+	public MemberDTO login(MemberDTO dto) {
+		// DBMS 연결 
+		MemberDTO rtnDto = null;
+		try {	
+			conn = getConnection();
+			
+			sql = "select * from member where id = ? and pw = ?";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			pstmt.setString(2, dto.getPw());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {
+				rtnDto = new MemberDTO();
+				rtnDto.setId(rs.getString("id"));
+				rtnDto.setName(rs.getString("name")); // 필드이름
+			} 
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}
+			
+	}
+	public MemberDTO read(MemberDTO dto) {
+		// DBMS 연결 
+		MemberDTO rtnDto = null;
+		try {	
+			conn = getConnection();
+			
+			sql = "select * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {
+				rtnDto = new MemberDTO();
+				rtnDto.setId(rs.getString("id"));
+				rtnDto.setName(rs.getString("name")); // 필드이름
+				rtnDto.setGender(rs.getString("gender"));
+				rtnDto.setBirth(rs.getString("birth"));
+			} 
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return rtnDto;
+		}
+			
+	}
+	public String join(MemberDTO dto) {
+		// DBMS 연결 
+		String rst = "success";
+		try {	
+			conn = getConnection(); 
+			
+			sql = "select * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			rs = pstmt.executeQuery();
+			
+			if (rs.next()) {		
+				rst = "중복아이디 : 이미 등록된 아이디입니다!";			
+			} else {		
+				// 트랜잭션 내의 여러 테이블 수정을 위해 AutoCommit을 중지
+				//conn.setAutoCommit(false);		
+				// 회원으로 등록 
+				sql = "insert into member (id, name, pw, gender, birth) " + 
+					  " values (?, ?, ?, ?, ?)";
+				pstmt = conn.prepareStatement(sql);
+				pstmt.setString(1, dto.getId());
+				pstmt.setString(2, dto.getName());
+				pstmt.setString(3, dto.getPw());
+				pstmt.setString(4, dto.getGender());
+				pstmt.setString(5, dto.getBirth());
+				pstmt.executeUpdate();
+				//conn.commit();
+			}
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();
+				rst = e.getMessage();
+		} finally {
+			return rst;
+		}
+	}
+	
+	public int update(MemberDTO dto) {
+		sql = "insert into member (id, name, pw, gender, birth) " + 
+				  " values (?, ?, ?, ?, ?)";
+		int row = 0;
+		
+		try {
+			conn = getConnection(); 
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			pstmt.setString(2, dto.getName());
+			pstmt.setString(3, dto.getPw());
+			pstmt.setString(4, dto.getGender());
+			pstmt.setString(5, dto.getBirth());
+			row = pstmt.executeUpdate();			
+		} catch(SQLException e) {
+			System.err.println(e.getMessage());			
+		} finally {
+			// dbutil.closeRsStmt();
+		}
+		return row;	
+	}
+	
+	
+	public List<MemberDTO> selectAll() {
+		
+		String query = "select * from member";
+		
+		
+		MemberDTO dto = null;
+	List<MemberDTO> dtoList = null;
+	try {
+		conn = getConnection();
+		rs = stmt.executeQuery(query);
+		dtoList = new ArrayList<MemberDTO>();
+		while(rs.next()) {
+			dto = new MemberDTO();
+			dto.setId(rs.getString("id"));
+			dto.setPw(rs.getString("pw"));
+			dto.setName(rs.getString("name"));
+			dto.setPhone(rs.getString("phone"));
+			dto.setEmail(rs.getString("email"));
+			dto.setZipcode(rs.getString("zipcode"));
+			dto.setAddress(rs.getString("address"));
+			dtoList.add(dto);
+		}
+	} catch(SQLException e) {
+		System.err.println(e.getMessage());			
+	} finally {
+		// dbutil.closeRsStmt();
+	}
+	return dtoList;
+}
+	public int delete(MemberDTO dto) {
+		// DBMS 연결 
+		int row=0;
+		try {	
+			conn = getConnection();
+			
+			sql = "delete * from member where id = ? ";
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setString(1, dto.getId());
+			row = pstmt.executeUpdate();
+			return row;
+			
+		} catch(SQLException e) {
+				// conn.rollback();
+				e.printStackTrace();				
+		} finally {
+			return row;
+		}
+			
+	}
+	
+	
+}
